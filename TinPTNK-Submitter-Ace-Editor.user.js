@@ -111,7 +111,7 @@
                 <div id="vnoj-foldable-body">
                     <div class="vnoj-form-row">
                         <label class="vnoj-label">Problem Code Name (Leave blank for automatic freopen check):</label>
-                        <input type="text" id="vnoj-prob-input" class="vnoj-input-text" placeholder="Ví dụ: plane, bitonic">
+                        <input type="text" id="vnoj-prob-input" class="vnoj-input-text" placeholder="E.g: aplusb, counting">
                     </div>
                     <div class="vnoj-form-row">
                         <div class="vnoj-toolbar">

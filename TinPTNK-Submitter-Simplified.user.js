@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TinPTNK Simplified Submitter
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @license      MIT
 // @description  Text Editor GUI for TinPTNK OJ - with auto file detector, hotkeys (Ctrl+S, Alt+S) and submit through text
 // @author       TomDev
@@ -59,188 +59,224 @@
     nativeFileInput.style.display = 'none';
 
     function extractFilenameFromCode(code) {
-        const cleanCode = code.replace(/\s+/g, ' ');
-        const setupMatch = cleanCode.match(/void\s+setup\s*\(\s*\)\s*\{([^}]+)\}/i);
-        if (!setupMatch) return null;
-        const fileMatch = setupMatch[1].match(/(?:freopen|fopen)\s*\(\s*["']([^"']+)["']/i);
-    if (!fileMatch) return null;
-    const originalFile = fileMatch[1];
-    const baseName = originalFile.substring(0, originalFile.lastIndexOf('.')) || originalFile;
-    return baseName + '.cpp';
-}
-
-function updateFilePreview() {
-    const manualName = probInput.value.trim();
-    if (manualName) {
-        statusSpan.innerText = `File: ${manualName}.cpp`;
-        statusSpan.style.color = '#3b5998';
-    } else {
-        const fileName = extractFilenameFromCode(codeArea.value);
-        if (fileName) {
-            statusSpan.innerText = `File: ${fileName}`;
-            statusSpan.style.color = '#555';
-        } else {
-            statusSpan.innerText = '';
+        if (!code) return null;
+        // Quét regex linh hoạt hơn cho freopen/fopen ở bất kỳ vị trí nào trong file
+        const fileMatch = code.match(/(?:freopen|fopen)\s*\(\s*["']([^"'\s]+)\.(inp|in|out|sol|txt)["']/i);
+        if (fileMatch && fileMatch[1]) {
+            return fileMatch[1].trim() + '.cpp';
         }
+        return null;
     }
-}
 
-probInput.addEventListener('input', updateFilePreview);
-codeArea.addEventListener('input', updateFilePreview);
-
-function renderPendingSubmissions() {
-    const logTableBody = document.querySelector('#logs table tbody');
-    if (!logTableBody) return;
-
-    const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
-
-    for (const [fileName, timeStamp] of Object.entries(pending)) {
-        const isFileProcessed = Array.from(logTableBody.querySelectorAll('tr td:nth-child(2)'))
-        .some(td => td.innerText.trim() === fileName);
-
-        if (isFileProcessed) {
-            delete pending[fileName];
-            localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
-            continue;
-        }
-
-        const newRow = document.createElement('tr');
-        newRow.className = 'better-cses-pending-row';
-        newRow.style.backgroundColor = '#fff9e6';
-
-        const btnDel = document.createElement('button');
-        btnDel.innerHTML = 'X';
-        btnDel.style.cssText = 'color: white; background: #e74c3c; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-left: 10px;';
-        btnDel.onclick = function() {
-            if (confirm(`Remove ${fileName} from queue?`)) {
-                const currentPending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
-                delete currentPending[fileName];
-                localStorage.setItem('ptnk_pending_subs', JSON.stringify(currentPending));
-                newRow.remove();
+    function updateFilePreview() {
+        const manualName = probInput.value.trim();
+        if (manualName) {
+            statusSpan.innerText = `File: ${manualName}.cpp`;
+            statusSpan.style.color = '#3b5998';
+        } else {
+            const fileName = extractFilenameFromCode(codeArea.value);
+            if (fileName) {
+                statusSpan.innerText = `File: ${fileName}`;
+                statusSpan.style.color = '#555';
+            } else {
+                statusSpan.innerText = '';
             }
-        };
-
-        newRow.innerHTML = `
-        <td>--</td>
-        <td style="font-weight: bold;">${fileName}</td>
-        <td><span style="color: #f39c12; font-weight: bold;">[Waiting for judge...]</span></td>
-        <td>--</td>
-        <td><span style="color: #f39c12;"><i class="icon refresh"></i> Waiting...</span></td>
-        `;
-        newRow.cells[4].appendChild(btnDel);
-        logTableBody.insertBefore(newRow, logTableBody.firstChild);
+        }
     }
-}
 
-if (typeof window.jQuery !== 'undefined') {
-    const originalLoad = window.jQuery.fn.load;
-    window.jQuery.fn.load = function(url, ...args) {
-        if (typeof url === 'string' && url.includes('logs.php')) {
-            const callback = args.find(arg => typeof arg === 'function');
-            const newCallback = function(...cbArgs) {
-                if (callback) callback.apply(this, cbArgs);
-                renderPendingSubmissions();
+    probInput.addEventListener('input', updateFilePreview);
+    codeArea.addEventListener('input', updateFilePreview);
+
+    function renderPendingSubmissions() {
+        const logTableBody = document.querySelector('#logs table tbody');
+        if (!logTableBody) return;
+
+        const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
+
+        for (const [fileName, timeStamp] of Object.entries(pending)) {
+            const isFileProcessed = Array.from(logTableBody.querySelectorAll('tr td:nth-child(2)'))
+            .some(td => td.innerText.trim() === fileName);
+
+            if (isFileProcessed) {
+                delete pending[fileName];
+                localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
+                continue;
+            }
+
+            const newRow = document.createElement('tr');
+            newRow.className = 'better-cses-pending-row';
+            newRow.style.backgroundColor = '#fff9e6';
+
+            const btnDel = document.createElement('button');
+            btnDel.innerHTML = 'X';
+            btnDel.style.cssText = 'color: white; background: #e74c3c; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-left: 10px;';
+            btnDel.onclick = function() {
+                if (confirm(`Remove ${fileName} from queue?`)) {
+                    const currentPending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
+                    delete currentPending[fileName];
+                    localStorage.setItem('ptnk_pending_subs', JSON.stringify(currentPending));
+                    newRow.remove();
+                }
             };
-            const cbIndex = args.findIndex(arg => typeof arg === 'function');
-            if (cbIndex !== -1) args[cbIndex] = newCallback;
-            else args.push(newCallback);
+
+            newRow.innerHTML = `
+            <td>--</td>
+            <td style="font-weight: bold;">${fileName}</td>
+            <td><span style="color: #f39c12; font-weight: bold;">[Waiting for judge...]</span></td>
+            <td>--</td>
+            <td><span style="color: #f39c12;"><i class="icon refresh"></i> Waiting...</span></td>
+            `;
+            newRow.cells[4].appendChild(btnDel);
+            logTableBody.insertBefore(newRow, logTableBody.firstChild);
         }
-        return originalLoad.apply(this, [url, ...args]);
-    };
-}
+    }
 
-setTimeout(renderPendingSubmissions, 500);
+    if (typeof window.jQuery !== 'undefined') {
+        const originalLoad = window.jQuery.fn.load;
+        window.jQuery.fn.load = function(url, ...args) {
+            if (typeof url === 'string' && url.includes('logs.php')) {
+                const callback = args.find(arg => typeof arg === 'function');
+                const newCallback = function(...cbArgs) {
+                    if (callback) callback.apply(this, cbArgs);
+                    renderPendingSubmissions();
+                };
+                const cbIndex = args.findIndex(arg => typeof arg === 'function');
+                if (cbIndex !== -1) args[cbIndex] = newCallback;
+                else args.push(newCallback);
+            }
+            return originalLoad.apply(this, [url, ...args]);
+        };
+    }
 
-function sendFileToServer(file, name) {
-    statusSpan.innerText = 'Submitting...';
-    statusSpan.style.color = '#3b5998';
+    setTimeout(renderPendingSubmissions, 500);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    function sendFileToServer(file, name) {
+        statusSpan.innerText = 'Submitting...';
+        statusSpan.style.color = '#3b5998';
 
-    fetch('upload.php', { method: 'POST', body: formData })
-    .then(response => {
-        if (response.ok) {
-            statusSpan.innerText = 'Completed!';
-            statusSpan.style.color = '#00aa00';
-            const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
-            pending[name] = Date.now();
-            localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
-            renderPendingSubmissions();
-            if (typeof window.jQuery !== 'undefined') window.jQuery('#logs').load('logs.php');
-        } else {
-            statusSpan.innerText = 'Server error!';
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('upload.php', { method: 'POST', body: formData })
+        .then(response => {
+            if (response.ok) {
+                statusSpan.innerText = 'Completed!';
+                statusSpan.style.color = '#00aa00';
+                const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
+                pending[name] = Date.now();
+                localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
+                renderPendingSubmissions();
+                if (typeof window.jQuery !== 'undefined') window.jQuery('#logs').load('logs.php');
+            } else {
+                statusSpan.innerText = 'Server error!';
+                statusSpan.style.color = '#cc0000';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            statusSpan.innerText = 'Connection error!';
             statusSpan.style.color = '#cc0000';
+        });
+    }
+
+    function executeSubmit(overrideCode) {
+        const codeText = (overrideCode && overrideCode.trim()) ? overrideCode : codeArea.value;
+        if (!codeText.trim()) return;
+
+        let fileName = '';
+        const manualName = probInput.value.trim();
+
+        if (manualName) {
+            fileName = manualName.endsWith('.cpp') ? manualName : manualName + '.cpp';
+        } else {
+            fileName = extractFilenameFromCode(codeText);
         }
-    })
-    .catch(err => {
-        console.error(err);
-        statusSpan.innerText = 'Connection error!';
-        statusSpan.style.color = '#cc0000';
+
+        if (!fileName) {
+            statusSpan.innerText = 'Missing file name!';
+            statusSpan.style.color = '#cc0000';
+            return;
+        }
+
+        const blob = new Blob([codeText], { type: 'text/plain' });
+        const file = new File([blob], fileName, { type: 'text/plain' });
+
+        codeArea.value = '';
+        sendFileToServer(file, fileName);
+    }
+
+    btn.addEventListener('click', () => executeSubmit());
+
+    uploadBtn.addEventListener('click', function() {
+        nativeFileInput.click();
     });
-}
 
-function executeSubmit() {
-    const codeText = codeArea.value;
-    if (!codeText.trim()) return;
+    nativeFileInput.addEventListener('change', function() {
+        if (nativeFileInput.files && nativeFileInput.files.length > 0) {
+            const selectedFile = nativeFileInput.files[0];
+            sendFileToServer(selectedFile, selectedFile.name);
+        }
+    });
 
-    let fileName = '';
-    const manualName = probInput.value.trim();
+    // Bridge trung gian paste và nộp bài
+    function capturePasteAndSubmit() {
+        const hiddenArea = document.createElement('textarea');
+        hiddenArea.style.position = 'fixed';
+        hiddenArea.style.left = '-9999px';
+        hiddenArea.style.top = '0';
+        hiddenArea.style.opacity = '0';
+        document.body.appendChild(hiddenArea);
+        hiddenArea.focus();
 
-    if (manualName) {
-        fileName = manualName.endsWith('.cpp') ? manualName : manualName + '.cpp';
-    } else {
-        fileName = extractFilenameFromCode(codeText);
-    }
+        let pasted = false;
+        try {
+            pasted = document.execCommand('paste');
+        } catch (e) {}
 
-    if (!fileName) {
-        statusSpan.innerText = 'Missing file name!';
-        statusSpan.style.color = '#cc0000';
-        return;
-    }
-
-    const blob = new Blob([codeText], { type: 'text/plain' });
-    const file = new File([blob], fileName, { type: 'text/plain' });
-
-    codeArea.value = '';
-    sendFileToServer(file, fileName);
-}
-
-btn.addEventListener('click', executeSubmit);
-
-uploadBtn.addEventListener('click', function() {
-    nativeFileInput.click();
-});
-
-nativeFileInput.addEventListener('change', function() {
-    if (nativeFileInput.files && nativeFileInput.files.length > 0) {
-        const selectedFile = nativeFileInput.files[0];
-        sendFileToServer(selectedFile, selectedFile.name);
-    }
-});
-
-// Xử lý auto paste từ clipboard và nộp
-async function triggerAutoPasteAndSubmit() {
-    try {
-        const clipText = await navigator.clipboard.readText();
-        if (clipText && clipText.trim()) {
+        if (pasted && hiddenArea.value.trim()) {
+            const clipText = hiddenArea.value;
             codeArea.value = clipText;
             updateFilePreview();
+            document.body.removeChild(hiddenArea);
+            executeSubmit(clipText);
+            return;
         }
-    } catch (err) {
-        console.warn('Clipboard read failed/blocked, using current textarea value:', err);
-    }
-    executeSubmit();
-}
+        document.body.removeChild(hiddenArea);
 
-// Global Hotkeys: Ctrl+S và Alt+S
-window.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        triggerAutoPasteAndSubmit();
-    } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        nativeFileInput.click();
+        // Fallback: Nếu trình duyệt cho phép đọc qua API Clipboard
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText().then(clipText => {
+                if (clipText && clipText.trim()) {
+                    codeArea.value = clipText;
+                    updateFilePreview();
+                    executeSubmit(clipText);
+                } else {
+                    executeSubmit();
+                }
+            }).catch(() => {
+                executeSubmit();
+            });
+            return;
+        }
+
+        executeSubmit();
     }
-});
+
+    // Lắng nghe sự kiện phím tắt Global ở giai đoạn Capture Phase
+    window.addEventListener('keydown', function(e) {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        const isKeyS = e.key === 's' || e.key === 'S' || e.code === 'KeyS';
+
+        if (isCtrlOrMeta && isKeyS) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            capturePasteAndSubmit();
+        } else if (e.altKey && isKeyS) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            nativeFileInput.click();
+        }
+    }, true);
 })();

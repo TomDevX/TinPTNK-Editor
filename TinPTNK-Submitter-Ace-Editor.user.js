@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TinPTNK Submitter
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @license      MIT
 // @description  Ace Editor GUI for TinPTNK OJ - with auto file detector, hotkeys (Ctrl+S, Alt+S) and submit through text
 // @author       TomDev
@@ -398,30 +398,148 @@
 
     btnAction.addEventListener('click', performSubmitText);
 
-    // Xử lý auto paste từ clipboard và nộp bài
-    async function triggerAutoPasteAndSubmit() {
-        if (!editor) return;
-        try {
-            const clipText = await navigator.clipboard.readText();
-            if (clipText && clipText.trim()) {
-                editor.setValue(clipText, -1);
+    // Hàm lấy text từ Clipboard bằng cả GM_getClipboard lẫn Navigator API
+    async function getClipboardText() {
+        // Ưu tiên 1: Dùng GM_getClipboard của Tampermonkey (vượt qua mọi hạn chế quyền)
+        if (typeof GM_getClipboard === 'function') {
+            try {
+                const text = GM_getClipboard();
+                if (text && typeof text === 'string' && text.trim()) return text;
+            } catch (e) {
+                console.warn('GM_getClipboard failed, fallbacking...', e);
             }
-        } catch (err) {
-            console.warn('Clipboard read failed/blocked, using current editor content:', err);
         }
-        performSubmitText();
+        // Ưu tiên 2: Dùng standard API
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            try {
+                return await navigator.clipboard.readText();
+            } catch (e) {
+                console.warn('navigator.clipboard.readText failed:', e);
+            }
+        }
+        return null;
     }
 
-    // Global Hotkeys: Ctrl+S và Alt+S
+    // Hàm thực hiện nộp bài
+    function executeSubmitProcess(codeToSubmit) {
+        if (!editor) return;
+        const code = (codeToSubmit && codeToSubmit.trim()) ? codeToSubmit : editor.getValue();
+        const lang = langSelect.value;
+        const ext = lang === 'pascal' ? '.pas' : (lang === 'python' ? '.py' : '.cpp');
+
+        let probName = inputProb.value.trim();
+        if (!probName) {
+            probName = detectProblemName(code, lang);
+        }
+
+        if (!probName) {
+            statusNode.innerText = 'Can not detect freopen, please fill file name manually';
+            statusNode.style.color = '#cc0000';
+            return;
+        }
+
+        const fileName = probName + ext;
+        const file = new File([new Blob([code])], fileName, { type: 'text/plain' });
+
+        const existingRow = findGradedRow(fileName);
+        const sig = existingRow ? getRowSignature(existingRow) : "";
+
+        submitFileToServer(file, fileName, sig);
+    }
+
+    btnAction.addEventListener('click', () => executeSubmitProcess());
+
+    // Tạo bridge trung gian để hứng nội dung clipboard
+    function capturePasteAndSubmit() {
+        if (!editor) return;
+
+        // Tạo một textarea ẩn để ép trình duyệt paste vào
+        const hiddenArea = document.createElement('textarea');
+        hiddenArea.style.position = 'fixed';
+        hiddenArea.style.left = '-9999px';
+        hiddenArea.style.top = '0';
+        hiddenArea.style.opacity = '0';
+        document.body.appendChild(hiddenArea);
+        hiddenArea.focus();
+
+        // Cố gắng đọc qua execCommand
+        let pasted = false;
+        try {
+            pasted = document.execCommand('paste');
+        } catch (e) {}
+
+        if (pasted && hiddenArea.value.trim()) {
+            const clipText = hiddenArea.value;
+            editor.setValue(clipText, -1);
+            const detected = detectProblemName(clipText, langSelect.value);
+            if (detected && !inputProb.value.trim()) {
+                inputProb.placeholder = `Auto detect: ${detected}`;
+            }
+            document.body.removeChild(hiddenArea);
+            executeSubmitProcess(clipText);
+            return;
+        }
+        document.body.removeChild(hiddenArea);
+
+        // Fallback: Nếu trình duyệt hỗ trợ Clipboard API (HTTPS hoặc localhost)
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText().then(clipText => {
+                if (clipText && clipText.trim()) {
+                    editor.setValue(clipText, -1);
+                    const detected = detectProblemName(clipText, langSelect.value);
+                    if (detected && !inputProb.value.trim()) {
+                        inputProb.placeholder = `Auto detect: ${detected}`;
+                    }
+                    executeSubmitProcess(clipText);
+                } else {
+                    executeSubmitProcess();
+                }
+            }).catch(() => {
+                // Nếu bị chặn quyền hoàn toàn: Lấy nội dung hiện tại trong editor nộp
+                executeSubmitProcess();
+            });
+            return;
+        }
+
+        // Trường hợp cuối: Dùng code đang có trong editor
+        executeSubmitProcess();
+    }
+
+    // Bắt phím tắt Global
     window.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        const isKeyS = e.key === 's' || e.key === 'S' || e.code === 'KeyS';
+
+        if (isCtrlOrMeta && isKeyS) {
             e.preventDefault();
-            triggerAutoPasteAndSubmit();
-        } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            capturePasteAndSubmit();
+        } else if (e.altKey && isKeyS) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             submitLoader.click();
         }
-    });
+    }, true);
+
+    // Bắt sự kiện bàn phím
+    window.addEventListener('keydown', function(e) {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        const isKeyS = e.key === 's' || e.key === 'S' || e.code === 'KeyS';
+
+        if (isCtrlOrMeta && isKeyS) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            triggerAutoPasteAndSubmit();
+        } else if (e.altKey && isKeyS) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            submitLoader.click();
+        }
+    }, true);
 
     function renderPendingSubmissions() {
         const logTableBody = document.querySelector('#logs table tbody');

@@ -8,6 +8,9 @@ Edit code inside TinPTNK OJ (and some other PTNKOJ) and submit through text with
 
 # Ace Editor version
 Integrated Ace Editor inside OJ
+You can also use:
+- `ctrl+S` for auto pasting and submit with clipboard
+- `alt+S` auto turn on file selecting menu and submit the file you chose
 
 <img width="1341" height="1030" alt="image" src="https://github.com/user-attachments/assets/4b26c44b-b149-4821-88dd-c468f1fc1fa4" />
 

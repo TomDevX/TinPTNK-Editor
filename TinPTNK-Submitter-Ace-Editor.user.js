@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         TinPTNK Submitter
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @license      MIT
-// @description  Ace Editor GUI for TinPTNK OJ - with auto file detector and submit through text
+// @description  Ace Editor GUI for TinPTNK OJ - with auto file detector, hotkeys (Ctrl+S, Alt+S) and submit through text
 // @author       TomDev
 // @match        http://www.tinptnk.com/*
 // @match        http://haitppt.ddns.net:81/*
@@ -49,95 +49,95 @@
 
     const style = document.createElement('style');
     style.innerHTML = `
-        .vnoj-wrapper {
-            margin-top: 20px;
-            margin-bottom: 25px;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            box-sizing: border-box;
-            transition: all 0.3s ease;
-        }
-        .vnoj-header {
-            font-size: 20px;
-            font-weight: 500;
-            color: #231F20;
-            margin-top: 0;
-            margin-bottom: 0;
-            padding-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            user-select: none;
-        }
-        .vnoj-header.has-border {
-            border-bottom: 1px solid #eee;
-            margin-bottom: 15px;
-        }
-        .vnoj-form-row { margin-bottom: 15px; }
-        .vnoj-label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; }
-        .vnoj-input-text { width: 100%; max-width: 300px; padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .vnoj-toolbar { background: #f5f5f5; border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
-        .vnoj-file-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; font-weight: 600; color: #333; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .vnoj-file-label:hover { background-color: #e9e9e9; border-color: #999; }
-        .vnoj-editor-frame { border: 1px solid #ccc; border-radius: 0 0 4px 4px; background: #fff; padding: 0; }
-        #vnoj-ace-editor { position: relative; width: 100%; height: 380px; border-radius: 0 0 4px 4px; }
-        #vnoj-ace-editor, #vnoj-ace-editor * { font-family: Consolas, 'Courier New', monospace !important; font-size: 14px !important; letter-spacing: 0 !important; word-spacing: 0 !important; line-height: 1.5 !important; text-shadow: none !important; }
-        .vnoj-select { width: 100%; max-width: 200px; padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
-        .vnoj-submit-bar { display: flex; align-items: center; gap: 15px; margin-top: 15px; }
-        .vnoj-button { background-color: #231F20; color: #fff; border: 1px solid #231F20; padding: 8px 24px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.15s; }
-        .vnoj-button:hover { background-color: #403b3c; border-color: #403b3c; }
-        .vnoj-status { font-size: 13px; font-weight: bold; }
-        .btn-remove-pending { color: white; background: #e74c3c; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-left: 10px; transition: background 0.2s; font-weight: bold; }
-        .btn-remove-pending:hover { background: #c0392b; }
-        .btn-toggle-frame { background: #eee; border: 1px solid #ccc; padding: 4px 10px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
-        .btn-toggle-frame:hover { background: #ddd; }
+    .vnoj-wrapper {
+        margin-top: 20px;
+        margin-bottom: 25px;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+    }
+    .vnoj-header {
+        font-size: 20px;
+        font-weight: 500;
+        color: #231F20;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+    }
+    .vnoj-header.has-border {
+        border-bottom: 1px solid #eee;
+        margin-bottom: 15px;
+    }
+    .vnoj-form-row { margin-bottom: 15px; }
+    .vnoj-label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; }
+    .vnoj-input-text { width: 100%; max-width: 300px; padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .vnoj-toolbar { background: #f5f5f5; border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+    .vnoj-file-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; font-weight: 600; color: #333; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .vnoj-file-label:hover { background-color: #e9e9e9; border-color: #999; }
+    .vnoj-editor-frame { border: 1px solid #ccc; border-radius: 0 0 4px 4px; background: #fff; padding: 0; }
+    #vnoj-ace-editor { position: relative; width: 100%; height: 380px; border-radius: 0 0 4px 4px; }
+    #vnoj-ace-editor, #vnoj-ace-editor * { font-family: Consolas, 'Courier New', monospace !important; font-size: 14px !important; letter-spacing: 0 !important; word-spacing: 0 !important; line-height: 1.5 !important; text-shadow: none !important; }
+    .vnoj-select { width: 100%; max-width: 200px; padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+    .vnoj-submit-bar { display: flex; align-items: center; gap: 15px; margin-top: 15px; }
+    .vnoj-button { background-color: #231F20; color: #fff; border: 1px solid #231F20; padding: 8px 24px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.15s; }
+    .vnoj-button:hover { background-color: #403b3c; border-color: #403b3c; }
+    .vnoj-status { font-size: 13px; font-weight: bold; }
+    .btn-remove-pending { color: white; background: #e74c3c; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-left: 10px; transition: background 0.2s; font-weight: bold; }
+    .btn-remove-pending:hover { background: #c0392b; }
+    .btn-toggle-frame { background: #eee; border: 1px solid #ccc; padding: 4px 10px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+    .btn-toggle-frame:hover { background: #ddd; }
     `;
     document.head.appendChild(style);
 
     const vnojSection = document.createElement('div');
     vnojSection.className = 'row';
     vnojSection.innerHTML = `
-        <div class="col-sm-12">
-            <div class="vnoj-wrapper">
-                <h2 class="vnoj-header has-border" id="vnoj-header-click">
-                    <span>Submit Solution</span>
-                    <button id="vnoj-toggle-btn" class="btn-toggle-frame">Collapse</button>
-                </h2>
+    <div class="col-sm-12">
+    <div class="vnoj-wrapper">
+    <h2 class="vnoj-header has-border" id="vnoj-header-click">
+    <span>Submit Solution <small style="font-size: 12px; color: #888;">(Ctrl+S: Paste & Submit | Alt+S: Upload File)</small></span>
+    <button id="vnoj-toggle-btn" class="btn-toggle-frame">Collapse</button>
+    </h2>
 
-                <div id="vnoj-foldable-body">
-                    <div class="vnoj-form-row">
-                        <label class="vnoj-label">Problem Code Name (Leave blank for automatic freopen check):</label>
-                        <input type="text" id="vnoj-prob-input" class="vnoj-input-text" placeholder="E.g: aplusb, counting">
-                    </div>
-                    <div class="vnoj-form-row">
-                        <div class="vnoj-toolbar">
-                            <label class="vnoj-file-label" for="vnoj-file-loader">Load from file...</label>
-                            <input type="file" id="vnoj-file-loader" style="display: none;">
-                            <label class="vnoj-file-label" for="vnoj-submit-loader" style="background:#e1f5fe; border-color:#b3e5fc;">Upload & Submit</label>
-                            <input type="file" id="vnoj-submit-loader" style="display: none;">
-                        </div>
-                        <div class="vnoj-editor-frame">
-                            <div id="vnoj-ace-editor"></div>
-                        </div>
-                    </div>
-                    <div class="vnoj-form-row">
-                        <select id="vnoj-lang-select" class="vnoj-select">
-                            <option value="c_cpp" selected>C++ (Themis)</option>
-                            <option value="pascal">Pascal (Themis)</option>
-                            <option value="python">Python 3</option>
-                        </select>
-                    </div>
-                    <div class="vnoj-submit-bar">
-                        <button type="button" id="vnoj-action-btn" class="vnoj-button">Submit Current!</button>
-                        <span id="vnoj-status-node" class="vnoj-status"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="vnoj-foldable-body">
+    <div class="vnoj-form-row">
+    <label class="vnoj-label">Problem Code Name (Leave blank for automatic freopen check):</label>
+    <input type="text" id="vnoj-prob-input" class="vnoj-input-text" placeholder="E.g: aplusb, counting">
+    </div>
+    <div class="vnoj-form-row">
+    <div class="vnoj-toolbar">
+    <label class="vnoj-file-label" for="vnoj-file-loader">Load from file...</label>
+    <input type="file" id="vnoj-file-loader" style="display: none;">
+    <label class="vnoj-file-label" for="vnoj-submit-loader" style="background:#e1f5fe; border-color:#b3e5fc;">Upload & Submit (Alt+S)</label>
+    <input type="file" id="vnoj-submit-loader" style="display: none;">
+    </div>
+    <div class="vnoj-editor-frame">
+    <div id="vnoj-ace-editor"></div>
+    </div>
+    </div>
+    <div class="vnoj-form-row">
+    <select id="vnoj-lang-select" class="vnoj-select">
+    <option value="c_cpp" selected>C++ (Themis)</option>
+    <option value="pascal">Pascal (Themis)</option>
+    <option value="python">Python 3</option>
+    </select>
+    </div>
+    <div class="vnoj-submit-bar">
+    <button type="button" id="vnoj-action-btn" class="vnoj-button">Submit Current! (Ctrl+S)</button>
+    <span id="vnoj-status-node" class="vnoj-status"></span>
+    </div>
+    </div>
+    </div>
+    </div>
     `;
     resultSection.parentNode.insertBefore(vnojSection, resultSection);
 
@@ -187,8 +187,8 @@
     function getRowSignature(tr) {
         if (!tr) return "";
         return Array.from(tr.cells)
-            .map(cell => cell.innerText.trim())
-            .join('|');
+        .map(cell => cell.innerText.trim())
+        .join('|');
     }
 
     function findGradedRow(fileName) {
@@ -260,6 +260,15 @@
             }
         });
 
+        // Chặn phím tắt Ctrl+S mặc định của Ace Editor để nhường cho hotkey global
+        editor.commands.addCommand({
+            name: 'submitAction',
+            bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
+            exec: function() {
+                triggerAutoPasteAndSubmit();
+            }
+        });
+
         setTimeout(() => {
             editor.renderer.updateCharacterSize();
             editor.resize(true);
@@ -296,7 +305,7 @@
                 const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
                 pending[fileName] = {
                     submitTime: Date.now(),
-                    lastSelfSignature: sig
+                                    lastSelfSignature: sig
                 };
                 localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
             }
@@ -316,7 +325,7 @@
                 const pending = JSON.parse(localStorage.getItem('ptnk_pending_subs') || '{}');
                 pending[fileName] = {
                     submitTime: Date.now(),
-                    lastSelfSignature: preSubmitSignature
+              lastSelfSignature: preSubmitSignature
                 };
                 localStorage.setItem('ptnk_pending_subs', JSON.stringify(pending));
                 renderPendingSubmissions();
@@ -361,7 +370,7 @@
         }
     });
 
-    btnAction.addEventListener('click', function() {
+    function performSubmitText() {
         if (!editor) return;
         const code = editor.getValue();
         const lang = langSelect.value;
@@ -385,6 +394,33 @@
         const sig = existingRow ? getRowSignature(existingRow) : "";
 
         submitFileToServer(file, fileName, sig);
+    }
+
+    btnAction.addEventListener('click', performSubmitText);
+
+    // Xử lý auto paste từ clipboard và nộp bài
+    async function triggerAutoPasteAndSubmit() {
+        if (!editor) return;
+        try {
+            const clipText = await navigator.clipboard.readText();
+            if (clipText && clipText.trim()) {
+                editor.setValue(clipText, -1);
+            }
+        } catch (err) {
+            console.warn('Clipboard read failed/blocked, using current editor content:', err);
+        }
+        performSubmitText();
+    }
+
+    // Global Hotkeys: Ctrl+S và Alt+S
+    window.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            triggerAutoPasteAndSubmit();
+        } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            submitLoader.click();
+        }
     });
 
     function renderPendingSubmissions() {
@@ -415,7 +451,7 @@
                 const td = tr.cells[1];
                 const tdStatus = tr.cells[2];
                 return td && td.innerText.trim().toLowerCase() === fileName.trim().toLowerCase() &&
-                       tdStatus && tdStatus.innerText.includes('[Waiting for judge...]');
+                tdStatus && tdStatus.innerText.includes('[Waiting for judge...]');
             });
             if (isAlreadyRendered) continue;
 
